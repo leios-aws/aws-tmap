@@ -51,6 +51,7 @@ var authorize = function(oAuth2Client) {
                         if (err) {
                             console.error('Error retrieving access token', err);
                             reject(err);
+                            return;
                         }
                         oAuth2Client.setCredentials(token);
                         // Store the token to disk for later program executions
@@ -58,6 +59,7 @@ var authorize = function(oAuth2Client) {
                             if (err) {
                                 console.error(err);
                                 reject(err);
+                                return;
                             }
                             console.log('Token stored to', TOKEN_PATH);
                         });
@@ -107,61 +109,81 @@ const develop_spreadsheets = [
 
 const service_spreadsheets = [
     {id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', path_list: [{name: "출근", start: home, end: hjauto, time: 0}, {name: "퇴근", start: hjauto, end: home, time: 0}]},
-    {id: '1NYHVggzwYViUA7dE_i2sUKm5oZmMJrW-U1Drwb_ZNnc', path_list: [{name: "출근", start: home, end: falinux, time: 0}, {name: "퇴근", start: falinux, end: home, time: 0}]}
+    //{id: '1NYHVggzwYViUA7dE_i2sUKm5oZmMJrW-U1Drwb_ZNnc', path_list: [{name: "출근", start: home, end: falinux, time: 0}, {name: "퇴근", start: falinux, end: home, time: 0}]}
 ]
 
 exports.handler = function (event, context, callback) {
     const { client_secret, client_id, redirect_uris } = config.get('installed');
     const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
 
+    var promiseList = [];
     authorize(oAuth2Client).then((auth) => {
         const service = google.sheets({ version: 'v4', auth });
 
         service_spreadsheets.forEach((sheet) => {
-            tmapPromise = [];
             sheet.path_list.forEach((path) => {
-                service.spreadsheets.values.clear({
-                    spreadsheetId: sheet.id,
-                    range: util.format('%s!A%d:B%d', path.name, row, row)
-                }, (err, res) => {
-                    //if (err) return console.log('The API returned an error: ' + err);
-
-                    service.spreadsheets.values.append({
+                promiseList.push(new Promise((resolve, reject) => {
+                    service.spreadsheets.values.clear({
                         spreadsheetId: sheet.id,
-                        range: util.format('%s!A%d:B%d', path.name, row, row),
-                        valueInputOption: 'USER_ENTERED',
-                        resource: { values: [[today.toFormat("yyyy-MM-dd"), weekdays[today.weekday]]] }
+                        range: util.format('%s!A%d:B%d', path.name, row, row)
                     }, (err, res) => {
-                        if (err) return console.log('The API returned an error: ' + err);
-                        console.log(path.name, "날짜/요일 입력 완료");
-                    });
+                        /*
+                        if (err) {
+                            console.error('The API returned an error: ' + err);
+                            reject(err);
+                            return;
+                        }
+                        */
     
-                });
-
-                tmapPromise.push(tmap_trace(path.start, path.end).then((html) => {
-                    obj = JSON.parse(html);
-                    path.time = obj["features"][0]["properties"]["totalTime"];
-                    console.log(path.name, "경로 예상 시간 측정 완료", path.time);
-
-                    service.spreadsheets.values.update({
-                        spreadsheetId: sheet.id,
-                        range: util.format('%s!%s%d', path.name, columns[Math.floor(today.hour * 6 + today.minute / 10) + 2], row),
-                        valueInputOption: 'USER_ENTERED',
-                        resource: { values: [[path.time/(24.0*60*60)]] }
-                    }, (err, res) => {
-                        if (err) return console.log('The API returned an error: ' + err);
-                        console.log(path.name, "시간 입력 완료");
+                        service.spreadsheets.values.append({
+                            spreadsheetId: sheet.id,
+                            range: util.format('%s!A%d:B%d', path.name, row, row),
+                            valueInputOption: 'USER_ENTERED',
+                            resource: { values: [[today.toFormat("yyyy-MM-dd"), weekdays[today.weekday]]] }
+                        }, (err, res) => {
+                            if (err) {
+                                console.error('The API returned an error: ' + err);
+                                reject(err);
+                                return;
+                            }
+                            console.log(path.name, "날짜/요일 입력 완료");
+                            resolve();
+                        });
                     });
+                }));
 
+                promiseList.push(tmap_trace(path.start, path.end).then((html) => {
+                    return new Promise((resolve, reject) => {
+                        obj = JSON.parse(html);
+                        path.time = obj["features"][0]["properties"]["totalTime"];
+                        console.log(path.name, "경로 예상 시간 측정 완료", path.time);
+
+                        service.spreadsheets.values.update({
+                            spreadsheetId: sheet.id,
+                            range: util.format('%s!%s%d', path.name, columns[Math.floor(today.hour * 6 + today.minute / 10) + 2], row),
+                            valueInputOption: 'USER_ENTERED',
+                            resource: { values: [[path.time/(24.0*60*60)]] }
+                        }, (err, res) => {
+                            if (err) {
+                                console.error('The API returned an error: ' + err);
+                                reject(err);
+                                return;
+                            }
+                            console.log(path.name, "시간 입력 완료");
+                            resolve();
+                        });
+                    });
                 }));
             });
-            Promise.all(tmapPromise).then(() => {
-                console.log("Done");
-                
-                if (callback) {
-                    callback(null, 'Success');
-                }
-            })
         });
+    }).then(() => {
+        Promise.all(promiseList).then(() => {
+            console.log("Done");
+            
+            if (callback) {
+                callback(null, 'Success');
+            }
+        })
     });
+
 };
