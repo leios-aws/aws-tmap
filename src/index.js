@@ -24,7 +24,7 @@ for (prefix = 'A'.charCodeAt(0); prefix <= 'Z'.charCodeAt(0); prefix++) {
         columns.push(String.fromCharCode(prefix) + String.fromCharCode(c));
     }
 }
-let weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+let weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
 var authorize = function(oAuth2Client) {
     return new Promise((resolve, reject) => {
@@ -108,7 +108,7 @@ const service_spreadsheets = [
 ]
 
 exports.handler = function (event, context, callback) {
-    var start_date = luxon.DateTime.fromISO("2019-07-01").setZone('Asia/Seoul');
+    var start_date = luxon.DateTime.fromISO("2019-06-30T15:00:00Z").setZone('Asia/Seoul');
     var today = luxon.DateTime.local().setZone('Asia/Seoul');
     var row = Math.floor((today - start_date)/24/60/60/1000) + 2;
     
@@ -138,7 +138,7 @@ exports.handler = function (event, context, callback) {
                             spreadsheetId: sheet.id,
                             range: util.format('%s!A%d:B%d', path.name, row, row),
                             valueInputOption: 'USER_ENTERED',
-                            resource: { values: [[today.toFormat("yyyy-MM-dd"), weekdays[today.weekday]]] }
+                            resource: { values: [[today.toFormat("yyyy-MM-dd"), weekdays[today.weekday - 1]]] }
                         }, (err, res) => {
                             if (err) {
                                 console.error('The API returned an error: ' + err);
