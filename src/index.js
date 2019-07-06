@@ -169,7 +169,7 @@ exports.handler = function (event, context, callback) {
                                 reject(err);
                                 return;
                             }
-                            console.log(path.name, "시간 입력 완료");
+                            console.log(path.name, "시간 입력", res.data.updatedRange, ":", res.statusText);
                             resolve();
                         });
                     });
