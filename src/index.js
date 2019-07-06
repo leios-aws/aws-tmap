@@ -108,15 +108,12 @@ const service_spreadsheets = [
 ]
 
 exports.handler = function (event, context, callback) {
-    var start_date = luxon.DateTime.fromISO("2019-07-01").setZone('Asia/Seoul');
+    var start_date = luxon.DateTime.fromISO("2019-06-30T15:00:00Z").setZone('Asia/Seoul');
     var today = luxon.DateTime.local().setZone('Asia/Seoul');
     var row = Math.floor((today - start_date)/24/60/60/1000) + 2;
     
     const { client_secret, client_id, redirect_uris } = config.get('installed');
     const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-
-    console.log("Started:", start_date.toISO());
-    console.log("Today:", today.toISO());
 
     var promiseList = [];
     authorize(oAuth2Client).then((auth) => {
