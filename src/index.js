@@ -10,17 +10,17 @@ const util = require('util');
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 const TOKEN_PATH = 'config/token.json';
 
-const falinux = { lon: "126.99024683", lat: "37.40150134" }
-const hjauto = { lon: "126.88114364", lat: "37.47296332" }
-const home = { lon: "126.82806535", lat: "37.46551880" }
+const falinux = { lon: "126.99024683", lat: "37.40150134" };
+const hjauto = { lon: "126.88114364", lat: "37.47296332" };
+const home = { lon: "126.82806535", lat: "37.46551880" };
 
 
 let columns = [];
-for (c = 'A'.charCodeAt(0); c <= 'Z'.charCodeAt(0); c++) {
+for (var c = 'A'.charCodeAt(0); c <= 'Z'.charCodeAt(0); c++) {
     columns.push(String.fromCharCode(c));
 }
-for (prefix = 'A'.charCodeAt(0); prefix <= 'Z'.charCodeAt(0); prefix++) {
-    for (c = 'A'.charCodeAt(0); c <= 'Z'.charCodeAt(0); c++) {
+for (var prefix = 'A'.charCodeAt(0); prefix <= 'Z'.charCodeAt(0); prefix++) {
+    for (var c = 'A'.charCodeAt(0); c <= 'Z'.charCodeAt(0); c++) {
         columns.push(String.fromCharCode(prefix) + String.fromCharCode(c));
     }
 }
@@ -67,16 +67,16 @@ var authorize = function (oAuth2Client) {
             resolve(oAuth2Client);
         });
     });
-}
+};
 
 const develop_spreadsheets = [
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', path_list: [{ name: "출근", start: home, end: falinux, time: 0 }, { name: "퇴근", start: falinux, end: home, time: 0 }] }
-]
+];
 
 const service_spreadsheets = [
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', path_list: [{ name: "출근", start: home, end: hjauto, time: 0 }, { name: "퇴근", start: hjauto, end: home, time: 0 }] },
     //{id: '1NYHVggzwYViUA7dE_i2sUKm5oZmMJrW-U1Drwb_ZNnc', path_list: [{name: "출근", start: home, end: falinux, time: 0}, {name: "퇴근", start: falinux, end: home, time: 0}]}
-]
+];
 
 var update_formula = function (service, sheet, path, range_name, values) {
     new Promise((resolve, reject) => {
@@ -127,7 +127,7 @@ exports.handle_formula = function (event, context, callback) {
                         f = f + util.format(" - MAXIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1)", path.name, columns[row], columns[row], path.name, columns[col]);
                         f = f + util.format(" - MINIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1))", path.name, columns[row], columns[row], path.name, columns[col]);
                         f = f + util.format(" / (COUNTIFS('%s'!$%s$2:$%s, \">=0\", '%s'!$B$2:$B, %s$1) - 2), (1 * 60)/(24*60*60))", path.name, columns[row], columns[row], path.name, columns[col]);
-                        values.push([f])
+                        values.push([f]);
                     }
 
                     promiseList.push(update_formula(service, sheet, path, range_name, values));
@@ -142,7 +142,7 @@ exports.handle_formula = function (event, context, callback) {
             if (callback) {
                 callback(null, 'Success');
             }
-        })
+        });
     });
 
 };
@@ -176,7 +176,7 @@ var update_date = function (service, sheet, path, range_name, values) {
                 resolve();
             });
         });
-    })
+    });
 };
 
 var tmap_trace = function (start, end) {
@@ -206,7 +206,7 @@ var tmap_trace = function (start, end) {
     };
 
     return request(requestOption);
-}
+};
 
 var update_time = function (service, sheet, path, range_name, values) {
     return new Promise((resolve, reject) => {
@@ -246,7 +246,7 @@ exports.handler = function (event, context, callback) {
                 promiseList.push(update_date(service, sheet, path, range_name, values).then(() => {
                     return tmap_trace(path.start, path.end);
                 }).then((html) => {
-                    obj = JSON.parse(html);
+                    var obj = JSON.parse(html);
                     path.time = obj["features"][0]["properties"]["totalTime"];
                     console.log(path.name, "경로 예상 시간 측정 완료", path.time);
 
@@ -263,7 +263,7 @@ exports.handler = function (event, context, callback) {
             if (callback) {
                 callback(null, 'Success');
             }
-        })
+        });
     });
 
 };
