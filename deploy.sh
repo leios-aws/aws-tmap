@@ -6,13 +6,13 @@ rm -f ${NAME}.zip
 
 case ${REVISION} in
     *develop*)
-        cd src && \
+        cd nodejs && \
             zip -r ../${NAME}.zip . -x node_modules\* && \
             cd .. && \
             aws lambda update-function-code --function-name ${NAME} --zip-file fileb://${NAME}.zip
         ;;
     *)
-        cd src && \
+        cd nodejs && \
             zip -r ../${NAME}.zip . -x node_modules\* && \
             cd .. && \
             aws lambda update-function-code --function-name ${NAME} --zip-file fileb://${NAME}.zip && \

@@ -1,2 +1,2 @@
 #!/bin/sh
-cd src && npm run test && cd ..
+cd nodejs && npm run test && cd ..
