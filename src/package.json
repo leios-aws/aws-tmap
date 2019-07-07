@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node -e \"require('./index.js').handler({key1: 'value1', key2: 'value2', key3: 'value3'})\""
+    "test": "node -e \"require('./index.js').handler({key1: 'value1', key2: 'value2', key3: 'value3'})\"",
+    "formula": "node -e \"require('./index.js').handle_formula({key1: 'value1', key2: 'value2', key3: 'value3'})\""
   },
   "author": "",
   "license": "ISC",
