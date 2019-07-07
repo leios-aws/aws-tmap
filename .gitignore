@@ -1,4 +1,3 @@
 *.zip
 output.log
-/src/config/*.json
-/nodejs/config/*.json
+/*/config/*.json
