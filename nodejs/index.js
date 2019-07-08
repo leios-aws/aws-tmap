@@ -75,7 +75,7 @@ const develop_spreadsheets = [
 
 const service_spreadsheets = [
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', path_list: [{ name: "출근", start: home, end: hjauto, time: 0 }, { name: "퇴근", start: hjauto, end: home, time: 0 }] },
-    //{id: '1NYHVggzwYViUA7dE_i2sUKm5oZmMJrW-U1Drwb_ZNnc', path_list: [{name: "출근", start: home, end: falinux, time: 0}, {name: "퇴근", start: falinux, end: home, time: 0}]}
+    { id: '1NYHVggzwYViUA7dE_i2sUKm5oZmMJrW-U1Drwb_ZNnc', path_list: [{ name: "출근", start: home, end: falinux, time: 0 }, { name: "퇴근", start: falinux, end: home, time: 0 }]}
 ];
 
 var update_formula = function (service, sheet, path, range_name, values) {
