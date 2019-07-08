@@ -168,10 +168,13 @@ exports.handle_formula = function (event, context, callback) {
                     let values = [];
                     var range_name = util.format("%s요약!%s2:%s", path.name, columns[col], columns[col]);
                     for (var row = 2; row < 146; row++) {
+                        var f = util.format("=Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1), (1 * 60)/(24*60*60))", path.name, columns[row], columns[row], path.name, columns[col]);
+                        /*
                         var f = util.format("=Floor((SUMIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1)", path.name, columns[row], columns[row], path.name, columns[col]);
                         f = f + util.format(" - MAXIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1)", path.name, columns[row], columns[row], path.name, columns[col]);
                         f = f + util.format(" - MINIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1))", path.name, columns[row], columns[row], path.name, columns[col]);
                         f = f + util.format(" / (COUNTIFS('%s'!$%s$2:$%s, \">=0\", '%s'!$B$2:$B, %s$1) - 2), (1 * 60)/(24*60*60))", path.name, columns[row], columns[row], path.name, columns[col]);
+                        */
                         values.push([f]);
                     }
 
