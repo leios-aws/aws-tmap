@@ -109,6 +109,37 @@ var update_formula = function (service, sheet, path, range_name, values) {
     });
 };
 
+var update_summary_formula = function (service, sheet, path, range_name, values) {
+    new Promise((resolve, reject) => {
+        service.spreadsheets.values.clear({
+            spreadsheetId: sheet.id,
+            range: range_name
+        }, (err, res) => {
+            if (err) {
+                console.error('The API returned an error: ' + err);
+                reject(err);
+                return;
+            }
+
+            service.spreadsheets.values.update({
+                spreadsheetId: sheet.id,
+                range: range_name,
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: values }
+            }, (err, res) => {
+                console.log(sheet.id, range_name, values.length);
+                if (err) {
+                    console.error('The API returned an error: ' + err);
+                    reject(err);
+                    return;
+                }
+                console.log(path.name, range_name, "요약 테이블 입력 완료");
+                resolve();
+            });
+        });
+    });
+};
+
 exports.handle_formula = function (event, context, callback) {
     const { client_secret, client_id, redirect_uris } = config.get('installed');
     const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
@@ -118,7 +149,21 @@ exports.handle_formula = function (event, context, callback) {
         const service = google.sheets({ version: 'v4', auth });
 
         service_spreadsheets.forEach((sheet) => {
+            var path_index = 0;
+
             sheet.path_list.forEach((path) => {
+                path_index = path_index + 1;
+
+                var summary_range_name = util.format("요약!%s2:%s", columns[path_index], columns[path_index]);
+                var summary_values = [];
+
+                for (var row = 2; row < 146; row++) {
+                    var f = util.format("=Floor(AVERAGE('%s'!$%s$2:$%s), (5 * 60)/(24*60*60))", path.name, columns[row], columns[row]);
+                    summary_values.push([f]);
+                }
+                promiseList.push(update_summary_formula(service, sheet, path, summary_range_name, summary_values));
+    
+    
                 for (var col = 1; col < 8; col++) {
                     let values = [];
                     var range_name = util.format("%s요약!%s2:%s", path.name, columns[col], columns[col]);
