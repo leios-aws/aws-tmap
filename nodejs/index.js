@@ -158,7 +158,7 @@ exports.handle_formula = function (event, context, callback) {
                 var summary_values = [];
 
                 for (var row = 2; row < 146; row++) {
-                    var f = util.format("=Floor(AVERAGE('%s'!$%s$2:$%s), (5 * 60)/(24*60*60))", path.name, columns[row], columns[row]);
+                    var f = util.format("=Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\"), (1 * 60)/(24*60*60))", path.name, columns[row], columns[row], path.name, path.name);
                     summary_values.push([f]);
                 }
                 promiseList.push(update_summary_formula(service, sheet, path, summary_range_name, summary_values));
