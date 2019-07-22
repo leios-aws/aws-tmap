@@ -70,7 +70,7 @@ var authorize = function (oAuth2Client) {
 };
 
 const develop_spreadsheets = [
-    { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', path_list: [{ name: "출근", start: home, end: falinux, time: 0 }, { name: "퇴근", start: falinux, end: home, time: 0 }] }
+    { id: '1BqEggKt6LANeKvv7gqx3zsrrnkK_iC8a57t6q_nkxsI', path_list: [{ name: "출근", start: home, end: falinux, time: 0 }, { name: "퇴근", start: falinux, end: home, time: 0 }] }
 ];
 
 const service_spreadsheets = [
