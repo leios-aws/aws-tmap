@@ -6,6 +6,7 @@ const fs = require('fs');
 const readline = require('readline');
 const luxon = require('luxon');
 const util = require('util');
+const async = require('async');
 
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 const TOKEN_PATH = 'config/token.json';
@@ -14,6 +15,17 @@ const falinux = { lon: "126.99024683", lat: "37.40150134" };
 const hjauto = { lon: "126.88114364", lat: "37.47296332" };
 const home = { lon: "126.82806535", lat: "37.46551880" };
 
+const develop_spreadsheets = [
+    { id: '1BqEggKt6LANeKvv7gqx3zsrrnkK_iC8a57t6q_nkxsI', name: "출근", start: home, end: falinux, time: 0 },
+    { id: '1BqEggKt6LANeKvv7gqx3zsrrnkK_iC8a57t6q_nkxsI', name: "퇴근", start: falinux, end: home, time: 0 },
+];
+
+const service_spreadsheets = [
+    { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "출근", start: home, end: hjauto, time: 0 },
+    { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "퇴근", start: hjauto, end: home, time: 0 },
+    { id: '1NYHVggzwYViUA7dE_i2sUKm5oZmMJrW-U1Drwb_ZNnc', name: "출근", start: home, end: falinux, time: 0 },
+    { id: '1NYHVggzwYViUA7dE_i2sUKm5oZmMJrW-U1Drwb_ZNnc', name: "퇴근", start: falinux, end: home, time: 0 },
+];
 
 let columns = [];
 for (var c = 'A'.charCodeAt(0); c <= 'Z'.charCodeAt(0); c++) {
@@ -26,57 +38,6 @@ for (var prefix = 'A'.charCodeAt(0); prefix <= 'Z'.charCodeAt(0); prefix++) {
 }
 let weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
-var authorize = function (oAuth2Client) {
-    return new Promise((resolve, reject) => {
-        // Check if we have previously stored a token.
-        fs.readFile(TOKEN_PATH, (err, token) => {
-            if (err) {
-                const authUrl = oAuth2Client.generateAuthUrl({
-                    access_type: 'offline',
-                    scope: SCOPES,
-                });
-                console.log('Authorize this app by visiting this url:', authUrl);
-                const rl = readline.createInterface({
-                    input: process.stdin,
-                    output: process.stdout,
-                });
-                rl.question('Enter the code from that page here: ', (code) => {
-                    rl.close();
-                    oAuth2Client.getToken(code, (err, token) => {
-                        if (err) {
-                            console.error('Error retrieving access token', err);
-                            reject(err);
-                            return;
-                        }
-                        oAuth2Client.setCredentials(token);
-                        // Store the token to disk for later program executions
-                        fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
-                            if (err) {
-                                console.error(err);
-                                reject(err);
-                                return;
-                            }
-                            console.log('Token stored to', TOKEN_PATH);
-                        });
-
-                        resolve(oAuth2Client);
-                    });
-                });
-            }
-            oAuth2Client.setCredentials(JSON.parse(token));
-            resolve(oAuth2Client);
-        });
-    });
-};
-
-const develop_spreadsheets = [
-    { id: '1BqEggKt6LANeKvv7gqx3zsrrnkK_iC8a57t6q_nkxsI', path_list: [{ name: "출근", start: home, end: falinux, time: 0 }, { name: "퇴근", start: falinux, end: home, time: 0 }] }
-];
-
-const service_spreadsheets = [
-    { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', path_list: [{ name: "출근", start: home, end: hjauto, time: 0 }, { name: "퇴근", start: hjauto, end: home, time: 0 }] },
-    { id: '1NYHVggzwYViUA7dE_i2sUKm5oZmMJrW-U1Drwb_ZNnc', path_list: [{ name: "출근", start: home, end: falinux, time: 0 }, { name: "퇴근", start: falinux, end: home, time: 0 }]}
-];
 
 var update_formula = function (service, sheet, path, range_name, values) {
     new Promise((resolve, reject) => {
@@ -164,7 +125,7 @@ exports.handle_formula = function (event, context, callback) {
             }
             promiseList.push(update_summary_formula(service, sheet, path, summary_range_name, summary_values));
             sheet.path_list.forEach((path) => {
-    
+
                 for (var col = 1; col < 8; col++) {
                     let values = [];
                     var range_name = util.format("%s요약!%s2:%s", path.name, columns[col], columns[col]);
@@ -194,6 +155,55 @@ exports.handle_formula = function (event, context, callback) {
         });
     });
 
+};
+
+var authorize = function (args, callback) {
+    // Check if we have previously stored a token.
+    fs.readFile(TOKEN_PATH, (err, token) => {
+        if (err) {
+            args.tokenReady = false;
+        } else {
+            args.oAuth2Client.setCredentials(JSON.parse(token));
+        }
+        callback(null, args);
+    });
+};
+
+var makeToken = function (args, callback) {
+    if (!args.tokenReady && !args.automated) {
+        const authUrl = args.oAuth2Client.generateAuthUrl({
+            access_type: 'offline',
+            scope: SCOPES,
+        });
+        console.log('Authorize this app by visiting this url:', authUrl);
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+        rl.question('Enter the code from that page here: ', (code) => {
+            rl.close();
+            args.oAuth2Client.getToken(code, (err, token) => {
+                if (err) {
+                    console.error('Error retrieving access token', err);
+                    callback(err, args);
+                    return;
+                }
+                args.oAuth2Client.setCredentials(token);
+                // Store the token to disk for later program executions
+                fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
+                    if (err) {
+                        console.error(err);
+                        callback(err, args);
+                        return;
+                    }
+                    console.log('Token stored to', TOKEN_PATH);
+                    callback(null, args);
+                    return;
+                });
+
+            });
+        });
+    } else {
+        callback("Token does not exist!", args);
+    }
 };
 
 var update_date = function (service, sheet, path, range_name, values) {
@@ -281,12 +291,58 @@ exports.handler = function (event, context, callback) {
     var today = luxon.DateTime.local().setZone('Asia/Seoul');
     var row = Math.floor((today - start_date) / 24 / 60 / 60 / 1000) + 2;
 
-    const { client_secret, client_id, redirect_uris } = config.get('installed');
-    const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
 
-    var promiseList = [];
+    async.waterfall([
+        function (callback) {
+            const { client_secret, client_id, redirect_uris } = config.get('installed');
+            callback(null, {
+                oAuth2Client: new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]),
+                automated: true,
+                tokenReady: false,
+                sheets: service_spreadsheets
+            });
+        },
+        authorize,
+        makeToken,
+        function (args, callback) {
+            args.service = google.sheets({ version: 'v4', auth });
+
+            async.eachSeries(sheets, function(sheet, callback) {
+                async.eachSeries(sheet.path_list, function(path, callback) {
+                    var range_name = util.format('%s!A%d:B%d', path.name, row, row);
+                    var values = [[today.toFormat("yyyy-MM-dd"), weekdays[today.weekday - 1]]];
+                    promiseList.push(update_date(service, sheet, path, range_name, values).then(() => {
+                        return tmap_trace(path.start, path.end);
+                    }).then((html) => {
+                        var obj = JSON.parse(html);
+                        path.time = obj["features"][0]["properties"]["totalTime"];
+                        console.log(path.name, "경로 예상 시간 측정 완료", path.time);
+    
+                        var range_name = util.format('%s!%s%d', path.name, columns[Math.floor(today.hour * 6 + today.minute / 10) + 2], row);
+                        var values = [[path.time / (24.0 * 60 * 60)]];
+                        return update_time(service, sheet, path, range_name, values);
+                    }));
+                }, function(err) {
+                    if (err) {
+                        console.log(err);
+                    }
+                    callback(err);
+                });
+            }, function(err) {
+                if (err) {
+                    console.log(err);
+                }
+                callback(args, err);
+            });
+        }
+
+    ], function(err, result) {
+        if (err) {
+            console.log(err);
+        }
+    });
+
     authorize(oAuth2Client).then((auth) => {
-        const service = google.sheets({ version: 'v4', auth });
 
         service_spreadsheets.forEach((sheet) => {
             sheet.path_list.forEach((path) => {
