@@ -134,7 +134,7 @@ exports.handle_formula = function (event, context, callback) {
                 oAuth2Client: new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]),
                 automated: false,
                 tokenReady: false,
-                sheets: develop_spreadsheets
+                sheets: service_spreadsheets
             });
         },
         authorize,
@@ -320,7 +320,7 @@ exports.handler = function (event, context, callback) {
                 oAuth2Client: new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]),
                 automated: true,
                 tokenReady: false,
-                sheets: develop_spreadsheets
+                sheets: service_spreadsheets
             });
         },
         authorize,
