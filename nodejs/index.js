@@ -81,8 +81,14 @@ var updateStatisticsFormula = function (sheet, index, callback) {
 };
 
 var buildSummaryFormula = function (sheet, index, callback) {
-    sheet.summary_range = util.format("요약!%s1:%s", columns[index * 2 + 1], columns[index * 2 + 2]);
-    sheet.summary_values = [[`평균 ${sheet.name}`, `오늘 ${sheet.name}`]];
+    if (sheet.name === "출근") {
+        sheet.summary_range = util.format("요약!%s1:%s", columns[1], columns[2]);
+        sheet.summary_values = [[`평균 ${sheet.name}`, `오늘 ${sheet.name}`]];
+    }
+    if (sheet.name === "퇴근") {
+        sheet.summary_range = util.format("요약!%s1:%s", columns[2], columns[3]);
+        sheet.summary_values = [[`평균 ${sheet.name}`, `오늘 ${sheet.name}`]];
+    }
 
     for (var row = 2; row < 146; row++) {
         var summary_row = [];
@@ -90,14 +96,14 @@ var buildSummaryFormula = function (sheet, index, callback) {
         if (sheet.name === "출근") {
             summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\"), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name, sheet.name));
             summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
+            sheet.summary_values.push(summary_row);
         }
 
         if (sheet.name === "퇴근") {
             summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\"), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name, sheet.name));
             summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
+            sheet.summary_values.push(summary_row);
         }
-
-        sheet.summary_values.push(summary_row);
     }
 
     callback(null, sheet, index);
