@@ -1,5 +1,4 @@
-var request = require('request-promise');
-const Promise = require('promise');
+var request = require('request');
 const config = require('config');
 const { google } = require('googleapis');
 const fs = require('fs');
@@ -38,123 +37,142 @@ for (var prefix = 'A'.charCodeAt(0); prefix <= 'Z'.charCodeAt(0); prefix++) {
 }
 let weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
+var buildStatisticsFormula = function (sheet, index, callback) {
+    sheet.statistics_range = util.format("%s요약!%s2:%s", sheet.name, columns[1], columns[7]);
+    sheet.statistics_values = [];
 
-var update_formula = function (service, sheet, path, range_name, values) {
-    new Promise((resolve, reject) => {
-        service.spreadsheets.values.clear({
-            spreadsheetId: sheet.id,
-            range: range_name
-        }, (err, res) => {
-            if (err) {
-                console.error('The API returned an error: ' + err);
-                reject(err);
-                return;
-            }
+    for (var row = 2; row < 146; row++) {
+        let values = [];
+        for (var col = 1; col < 8; col++) {
+            //var f = util.format("=Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1), (1 * 60)/(24*60*60))", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
+            var f = util.format("=Floor((SUMIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1)", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
+            f = f + util.format(" - MAXIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1)", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
+            f = f + util.format(" - MINIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1))", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
+            f = f + util.format(" / (COUNTIFS('%s'!$%s$2:$%s, \">=0\", '%s'!$B$2:$B, %s$1) - 2), (1 * 60)/(24*60*60))", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
+            values.push(f);
+        }
+        sheet.statistics_values.push(values);
+    }
 
-            service.spreadsheets.values.update({
-                spreadsheetId: sheet.id,
-                range: range_name,
-                valueInputOption: 'USER_ENTERED',
-                resource: { values: values }
-            }, (err, res) => {
-                console.log(sheet.id, range_name, values.length);
-                if (err) {
-                    console.error('The API returned an error: ' + err);
-                    reject(err);
-                    return;
-                }
-                console.log(path.name, range_name, "요약 테이블 입력 완료");
-                resolve();
-            });
-        });
+    callback(null, sheet, index);
+};
+
+var clearStatisticsFormula = function (sheet, index, callback) {
+    sheet.service.spreadsheets.values.clear({
+        spreadsheetId: sheet.id,
+        range: sheet.statistics_range
+    }, (err, res) => {
+        callback(null, sheet, index);
     });
 };
 
-var update_summary_formula = function (service, sheet, path, range_name, values) {
-    new Promise((resolve, reject) => {
-        service.spreadsheets.values.clear({
-            spreadsheetId: sheet.id,
-            range: range_name
-        }, (err, res) => {
-            if (err) {
-                console.error('The API returned an error: ' + err);
-                reject(err);
-                return;
-            }
+var updateStatisticsFormula = function (sheet, index, callback) {
+    sheet.service.spreadsheets.values.update({
+        spreadsheetId: sheet.id,
+        range: sheet.statistics_range,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: sheet.statistics_values }
+    }, (err, res) => {
+        if (!err) {
+            console.log(sheet.id, sheet.name, "통계 테이블 입력 완료");
+        }
+        callback(err, sheet, index);
+    });
+};
 
-            service.spreadsheets.values.update({
-                spreadsheetId: sheet.id,
-                range: range_name,
-                valueInputOption: 'USER_ENTERED',
-                resource: { values: values }
-            }, (err, res) => {
-                console.log(sheet.id, range_name, values.length);
-                if (err) {
-                    console.error('The API returned an error: ' + err);
-                    reject(err);
-                    return;
-                }
-                console.log(path.name, range_name, "요약 테이블 입력 완료");
-                resolve();
-            });
-        });
+var buildSummaryFormula = function (sheet, index, callback) {
+    sheet.summary_range = util.format("요약!%s1:%s", columns[index * 2 + 1], columns[index * 2 + 2]);
+    sheet.summary_values = [[`평균 ${sheet.name}`, `오늘 ${sheet.name}`]];
+
+    for (var row = 2; row < 146; row++) {
+        var summary_row = [];
+
+        if (sheet.name === "출근") {
+            summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\"), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name, sheet.name));
+            summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
+        }
+
+        if (sheet.name === "퇴근") {
+            summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\"), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name, sheet.name));
+            summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
+        }
+
+        sheet.summary_values.push(summary_row);
+    }
+
+    callback(null, sheet, index);
+};
+
+var clearSummaryFormula = function (sheet, index, callback) {
+    sheet.service.spreadsheets.values.clear({
+        spreadsheetId: sheet.id,
+        range: sheet.summary_range
+    }, (err, res) => {
+        callback(null, sheet, index);
+    });
+};
+
+var updateSummaryFormula = function (sheet, index, callback) {
+    sheet.service.spreadsheets.values.update({
+        spreadsheetId: sheet.id,
+        range: sheet.summary_range,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: sheet.summary_values }
+    }, (err, res) => {
+        if (!err) {
+            console.log(sheet.id, sheet.name, "요약 테이블 입력 완료");
+        }
+        callback(err, sheet, index);
     });
 };
 
 exports.handle_formula = function (event, context, callback) {
-    const { client_secret, client_id, redirect_uris } = config.get('installed');
-    const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-
-    var promiseList = [];
-    authorize(oAuth2Client).then((auth) => {
-        const service = google.sheets({ version: 'v4', auth });
-
-        service_spreadsheets.forEach((sheet) => {
-            var summary_range_name = util.format("요약!%s2:%s", columns[1], columns[4]);
-            var summary_values = [];
-
-            for (var row = 2; row < 146; row++) {
-                var summary_row = [];
-
-                summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\"), (1 * 60)/(24*60*60)), \"\")", row, "출근", columns[row], columns[row], "출근", "출근"));
-                summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\"), (1 * 60)/(24*60*60)), \"\")", row, "퇴근", columns[row], columns[row], "퇴근", "퇴근"));
-                summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('출근'!$%s$2:$%s, '출근'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, columns[row], columns[row]));
-                summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('퇴근'!$%s$2:$%s, '퇴근'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, columns[row], columns[row]));
-
-                summary_values.push(summary_row);
-            }
-            promiseList.push(update_summary_formula(service, sheet, path, summary_range_name, summary_values));
-            sheet.path_list.forEach((path) => {
-
-                for (var col = 1; col < 8; col++) {
-                    let values = [];
-                    var range_name = util.format("%s요약!%s2:%s", path.name, columns[col], columns[col]);
-                    for (var row = 2; row < 146; row++) {
-                        var f = util.format("=Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1), (1 * 60)/(24*60*60))", path.name, columns[row], columns[row], path.name, columns[col]);
-                        /*
-                        var f = util.format("=Floor((SUMIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1)", path.name, columns[row], columns[row], path.name, columns[col]);
-                        f = f + util.format(" - MAXIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1)", path.name, columns[row], columns[row], path.name, columns[col]);
-                        f = f + util.format(" - MINIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1))", path.name, columns[row], columns[row], path.name, columns[col]);
-                        f = f + util.format(" / (COUNTIFS('%s'!$%s$2:$%s, \">=0\", '%s'!$B$2:$B, %s$1) - 2), (1 * 60)/(24*60*60))", path.name, columns[row], columns[row], path.name, columns[col]);
-                        */
-                        values.push([f]);
-                    }
-
-                    promiseList.push(update_formula(service, sheet, path, range_name, values));
-
-                }
+    async.waterfall([
+        function (callback) {
+            const { client_secret, client_id, redirect_uris } = config.get('installed');
+            callback(null, {
+                oAuth2Client: new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]),
+                automated: false,
+                tokenReady: false,
+                sheets: develop_spreadsheets
             });
-        });
-    }).then(() => {
-        Promise.all(promiseList).then(() => {
-            console.log("Done");
+        },
+        authorize,
+        makeToken,
+        function (args, callback) {
+            const service = google.sheets({ version: 'v4', auth: args.oAuth2Client });
 
-            if (callback) {
-                callback(null, 'Success');
-            }
-        });
+            async.eachOf(args.sheets, function (sheet, index, callback) {
+                sheet.service = service;
+
+                async.waterfall([
+                    function (callback) {
+                        callback(null, sheet, index);
+                    },
+                    buildSummaryFormula,
+                    clearSummaryFormula,
+                    updateSummaryFormula,
+                    buildStatisticsFormula,
+                    clearStatisticsFormula,
+                    updateStatisticsFormula,
+                ], function (err) {
+                    if (err) {
+                        console.log(err);
+                    }
+                    callback(err);
+                });
+            }, function (err) {
+                if (err) {
+                    console.log(err);
+                }
+                callback(err, args);
+            });
+        }
+    ], function (err) {
+        if (err) {
+            console.log(err);
+        }
     });
-
 };
 
 var authorize = function (args, callback) {
@@ -163,6 +181,7 @@ var authorize = function (args, callback) {
         if (err) {
             args.tokenReady = false;
         } else {
+            args.tokenReady = true;
             args.oAuth2Client.setCredentials(JSON.parse(token));
         }
         callback(null, args);
@@ -170,83 +189,83 @@ var authorize = function (args, callback) {
 };
 
 var makeToken = function (args, callback) {
-    if (!args.tokenReady && !args.automated) {
-        const authUrl = args.oAuth2Client.generateAuthUrl({
-            access_type: 'offline',
-            scope: SCOPES,
-        });
-        console.log('Authorize this app by visiting this url:', authUrl);
-        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    if (!args.tokenReady) {
+        if (!args.automated) {
+            const authUrl = args.oAuth2Client.generateAuthUrl({
+                access_type: 'offline',
+                scope: SCOPES,
+            });
+            console.log('Authorize this app by visiting this url:', authUrl);
+            const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
-        rl.question('Enter the code from that page here: ', (code) => {
-            rl.close();
-            args.oAuth2Client.getToken(code, (err, token) => {
-                if (err) {
-                    console.error('Error retrieving access token', err);
-                    callback(err, args);
-                    return;
-                }
-                args.oAuth2Client.setCredentials(token);
-                // Store the token to disk for later program executions
-                fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
+            rl.question('Enter the code from that page here: ', (code) => {
+                rl.close();
+                args.oAuth2Client.getToken(code, (err, token) => {
                     if (err) {
-                        console.error(err);
+                        console.error('Error retrieving access token', err);
                         callback(err, args);
                         return;
                     }
-                    console.log('Token stored to', TOKEN_PATH);
-                    callback(null, args);
-                    return;
-                });
+                    args.oAuth2Client.setCredentials(token);
+                    // Store the token to disk for later program executions
+                    fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
+                        if (err) {
+                            console.error(err);
+                            callback(err, args);
+                            return;
+                        }
+                        console.log('Token stored to', TOKEN_PATH);
+                        callback(null, args);
+                        return;
+                    });
 
+                });
             });
-        });
+        } else {
+            callback("Token does not exist!", args);
+        }
     } else {
-        callback("Token does not exist!", args);
+        callback(null, args);
     }
 };
 
-var update_date = function (service, sheet, path, range_name, values) {
-    return new Promise((resolve, reject) => {
-        service.spreadsheets.values.clear({
-            spreadsheetId: sheet.id,
-            range: range_name
-        }, (err, res) => {
-            /*
-            if (err) {
-                console.error('The API returned an error: ' + err);
-                reject(err);
-                return;
-            }
-            */
-
-            service.spreadsheets.values.append({
-                spreadsheetId: sheet.id,
-                range: range_name,
-                valueInputOption: 'USER_ENTERED',
-                resource: { values: values }
-            }, (err, res) => {
-                if (err) {
-                    console.error('The API returned an error: ' + err);
-                    reject(err);
-                    return;
-                }
-                console.log(path.name, "날짜/요일 입력 완료");
-                resolve();
-            });
-        });
+var clearDate = function (sheet, callback) {
+    sheet.service.spreadsheets.values.clear({
+        spreadsheetId: sheet.id,
+        range: sheet.date_range
+    }, (err, res) => {
+        callback(null, sheet);
     });
 };
 
-var tmap_trace = function (start, end) {
-    var requestOption = {
+var updateDate = function (sheet, callback) {
+    sheet.service.spreadsheets.values.append({
+        spreadsheetId: sheet.id,
+        range: sheet.date_range,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: sheet.date_value }
+    }, (err, res) => {
+        if (!err) {
+            console.log(sheet.id, sheet.name, "날짜/요일 입력 완료");
+        }
+        callback(err, sheet);
+    });
+};
+
+var tracePath = function (sheet, callback) {
+    if (sheet.path_value) {
+        callback(null, sheet);
+        return;
+    }
+
+    var option = {
         uri: 'https://api2.sktelecom.com/tmap/routes?version=1',
         method: 'POST',
         form: {
-            startX: start['lon'],
-            startY: start['lat'],
-            endX: end['lon'],
-            endY: end['lat'],
+            startX: sheet.start['lon'],
+            startY: sheet.start['lat'],
+            endX: sheet.end['lon'],
+            endY: sheet.end['lat'],
             reqCoordType: "WGS84GEO",
             resCoordType: "EPSG3857",
             searchOption: "0",
@@ -260,29 +279,32 @@ var tmap_trace = function (start, end) {
             'appKey': config.get('tmap').appKey
         },
         jar: true,
+        json: true,
         gzip: true,
-        encoding: null
     };
 
-    return request(requestOption);
+    request(option, function (err, res, body) {
+        if (!err && body && body.features && body.features.length > 0 && body.features[0].properties && body.features[0].properties.totalTime) {
+            sheet.path_value = body.features[0].properties.totalTime;
+            console.log(sheet.id, sheet.name, "경로 예상 시간 측정 완료", sheet.path_value);
+        }
+
+        callback(err, sheet);
+    });
 };
 
-var update_time = function (service, sheet, path, range_name, values) {
-    return new Promise((resolve, reject) => {
-        service.spreadsheets.values.update({
-            spreadsheetId: sheet.id,
-            range: range_name,
-            valueInputOption: 'USER_ENTERED',
-            resource: { values: values }
-        }, (err, res) => {
-            if (err) {
-                console.error('The API returned an error: ' + err);
-                reject(err);
-                return;
-            }
-            console.log(path.name, "시간 입력", res.data.updatedRange, ":", res.statusText);
-            resolve();
-        });
+var updateTime = function (sheet, callback) {
+    sheet.service.spreadsheets.values.update({
+        spreadsheetId: sheet.id,
+        range: sheet.path_range,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: [[sheet.path_value / (24.0 * 60 * 60)]] }
+    }, (err, res) => {
+        if (!err) {
+            console.log(sheet.id, sheet.name, "시간 입력", res.data.updatedRange, ":", res.statusText);
+        }
+
+        callback(err, sheet);
     });
 };
 
@@ -291,7 +313,6 @@ exports.handler = function (event, context, callback) {
     var today = luxon.DateTime.local().setZone('Asia/Seoul');
     var row = Math.floor((today - start_date) / 24 / 60 / 60 / 1000) + 2;
 
-
     async.waterfall([
         function (callback) {
             const { client_secret, client_id, redirect_uris } = config.get('installed');
@@ -299,76 +320,46 @@ exports.handler = function (event, context, callback) {
                 oAuth2Client: new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]),
                 automated: true,
                 tokenReady: false,
-                sheets: service_spreadsheets
+                sheets: develop_spreadsheets
             });
         },
         authorize,
         makeToken,
         function (args, callback) {
-            args.service = google.sheets({ version: 'v4', auth });
+            const service = google.sheets({ version: 'v4', auth: args.oAuth2Client });
 
-            async.eachSeries(sheets, function(sheet, callback) {
-                async.eachSeries(sheet.path_list, function(path, callback) {
-                    var range_name = util.format('%s!A%d:B%d', path.name, row, row);
-                    var values = [[today.toFormat("yyyy-MM-dd"), weekdays[today.weekday - 1]]];
-                    promiseList.push(update_date(service, sheet, path, range_name, values).then(() => {
-                        return tmap_trace(path.start, path.end);
-                    }).then((html) => {
-                        var obj = JSON.parse(html);
-                        path.time = obj["features"][0]["properties"]["totalTime"];
-                        console.log(path.name, "경로 예상 시간 측정 완료", path.time);
-    
-                        var range_name = util.format('%s!%s%d', path.name, columns[Math.floor(today.hour * 6 + today.minute / 10) + 2], row);
-                        var values = [[path.time / (24.0 * 60 * 60)]];
-                        return update_time(service, sheet, path, range_name, values);
-                    }));
-                }, function(err) {
+            async.each(args.sheets, function (sheet, callback) {
+                sheet.service = service;
+                sheet.date_range = util.format('%s!A%d:B%d', sheet.name, row, row);
+                sheet.date_value = [[today.toFormat("yyyy-MM-dd"), weekdays[today.weekday - 1]]];
+                sheet.path_range = util.format('%s!%s%d', sheet.name, columns[Math.floor(today.hour * 6 + today.minute / 10) + 2], row);
+
+                async.waterfall([
+                    function (callback) {
+                        callback(null, sheet);
+                    },
+                    clearDate,
+                    updateDate,
+                    tracePath,
+                    tracePath,
+                    tracePath,
+                    updateTime,
+                ], function (err) {
                     if (err) {
                         console.log(err);
                     }
                     callback(err);
                 });
-            }, function(err) {
+            }, function (err) {
                 if (err) {
                     console.log(err);
                 }
-                callback(args, err);
+                callback(err, args);
             });
         }
-
-    ], function(err, result) {
+    ], function (err, result) {
         if (err) {
             console.log(err);
         }
     });
-
-    authorize(oAuth2Client).then((auth) => {
-
-        service_spreadsheets.forEach((sheet) => {
-            sheet.path_list.forEach((path) => {
-                var range_name = util.format('%s!A%d:B%d', path.name, row, row);
-                var values = [[today.toFormat("yyyy-MM-dd"), weekdays[today.weekday - 1]]];
-                promiseList.push(update_date(service, sheet, path, range_name, values).then(() => {
-                    return tmap_trace(path.start, path.end);
-                }).then((html) => {
-                    var obj = JSON.parse(html);
-                    path.time = obj["features"][0]["properties"]["totalTime"];
-                    console.log(path.name, "경로 예상 시간 측정 완료", path.time);
-
-                    var range_name = util.format('%s!%s%d', path.name, columns[Math.floor(today.hour * 6 + today.minute / 10) + 2], row);
-                    var values = [[path.time / (24.0 * 60 * 60)]];
-                    return update_time(service, sheet, path, range_name, values);
-                }));
-            });
-        });
-    }).then(() => {
-        Promise.all(promiseList).then(() => {
-            console.log("Done");
-
-            if (callback) {
-                callback(null, 'Success');
-            }
-        });
-    });
-
 };
