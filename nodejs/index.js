@@ -67,6 +67,7 @@ var clearStatisticsFormula = function (sheet, index, callback) {
 };
 
 var updateStatisticsFormula = function (sheet, index, callback) {
+    console.log(sheet.id, sheet.name, "통계 테이블 입력 요청");
     sheet.service.spreadsheets.values.update({
         spreadsheetId: sheet.id,
         range: sheet.statistics_range,
@@ -119,6 +120,7 @@ var clearSummaryFormula = function (sheet, index, callback) {
 };
 
 var updateSummaryFormula = function (sheet, index, callback) {
+    console.log(sheet.id, sheet.name, "요약 테이블 입력 요청");
     sheet.service.spreadsheets.values.update({
         spreadsheetId: sheet.id,
         range: sheet.summary_range,
@@ -245,6 +247,7 @@ var clearDate = function (sheet, callback) {
 };
 
 var updateDate = function (sheet, callback) {
+    console.log(sheet.id, sheet.name, "날짜/요일 입력 요청");
     sheet.service.spreadsheets.values.append({
         spreadsheetId: sheet.id,
         range: sheet.date_range,
@@ -289,6 +292,7 @@ var tracePath = function (sheet, callback) {
         gzip: true,
     };
 
+    console.log(sheet.id, sheet.name, "경로 예상 시간 측정 요청", sheet.path_value);
     request(option, function (err, res, body) {
         if (!err && body && body.features && body.features.length > 0 && body.features[0].properties && body.features[0].properties.totalTime) {
             sheet.path_value = body.features[0].properties.totalTime;
@@ -300,6 +304,7 @@ var tracePath = function (sheet, callback) {
 };
 
 var updateTime = function (sheet, callback) {
+    console.log(sheet.id, sheet.name, "시간 입력 요청");
     sheet.service.spreadsheets.values.update({
         spreadsheetId: sheet.id,
         range: sheet.path_range,
@@ -307,7 +312,7 @@ var updateTime = function (sheet, callback) {
         resource: { values: [[sheet.path_value / (24.0 * 60 * 60)]] }
     }, (err, res) => {
         if (!err) {
-            console.log(sheet.id, sheet.name, "시간 입력", res.data.updatedRange, ":", res.statusText);
+            console.log(sheet.id, sheet.name, "시간 입력 완료", res.data.updatedRange, ":", res.statusText);
         }
 
         callback(err, sheet);
