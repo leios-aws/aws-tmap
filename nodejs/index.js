@@ -45,10 +45,13 @@ var buildStatisticsFormula = function (sheet, index, callback) {
         let values = [];
         for (var col = 1; col < 8; col++) {
             //var f = util.format("=Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1), (1 * 60)/(24*60*60))", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
+            var f = `=Floor(TRIMMEAN(FILTER('${sheet.name}'!$${columns[row]}$2:$${columns[row]}, '${sheet.name}'!$B$2:$B = ${columns[col]}$1), 0.25), (1 * 60)/(24*60*60))`;
+            /*
             var f = util.format("=Floor((SUMIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1)", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
             f = f + util.format(" - MAXIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1)", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
             f = f + util.format(" - MINIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1))", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
             f = f + util.format(" / (COUNTIFS('%s'!$%s$2:$%s, \">=0\", '%s'!$B$2:$B, %s$1) - 2), (1 * 60)/(24*60*60))", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
+            */
             values.push(f);
         }
         sheet.statistics_values.push(values);
@@ -87,7 +90,7 @@ var buildSummaryFormula = function (sheet, index, callback) {
         sheet.summary_values = [[`평균 ${sheet.name}`, `오늘 ${sheet.name}`]];
     }
     if (sheet.name === "퇴근") {
-        sheet.summary_range = util.format("요약!%s1:%s", columns[2], columns[3]);
+        sheet.summary_range = util.format("요약!%s1:%s", columns[3], columns[4]);
         sheet.summary_values = [[`평균 ${sheet.name}`, `오늘 ${sheet.name}`]];
     }
 
@@ -95,13 +98,13 @@ var buildSummaryFormula = function (sheet, index, callback) {
         var summary_row = [];
 
         if (sheet.name === "출근") {
-            summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\"), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name, sheet.name));
+            summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\", '%s'!$A2:$A, \">\" & (TODAY() - 30)), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name, sheet.name, sheet.name));
             summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
             sheet.summary_values.push(summary_row);
         }
 
         if (sheet.name === "퇴근") {
-            summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\"), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name, sheet.name));
+            summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\", '%s'!$A2:$A, \">\" & (TODAY() - 30)), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name, sheet.name, sheet.name));
             summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
             sheet.summary_values.push(summary_row);
         }
