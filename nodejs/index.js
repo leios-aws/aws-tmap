@@ -13,15 +13,16 @@ const TOKEN_PATH = 'config/token.json';
 const falinux = { lon: "126.99024683", lat: "37.40150134" };
 const hjauto = { lon: "126.88114364", lat: "37.47296332" };
 const home = { lon: "126.82806535", lat: "37.46551880" };
+const hdel = {lon: "127.09782029", lat: "37.40483622"};
 
 const develop_spreadsheets = [
-    { id: '1BqEggKt6LANeKvv7gqx3zsrrnkK_iC8a57t6q_nkxsI', name: "출근", start: home, end: falinux, time: 0 },
-    { id: '1BqEggKt6LANeKvv7gqx3zsrrnkK_iC8a57t6q_nkxsI', name: "퇴근", start: falinux, end: home, time: 0 },
+    { id: '1BqEggKt6LANeKvv7gqx3zsrrnkK_iC8a57t6q_nkxsI', name: "출근", start: home, end: hdel, time: 0 },
+    { id: '1BqEggKt6LANeKvv7gqx3zsrrnkK_iC8a57t6q_nkxsI', name: "퇴근", start: hdel, end: home, time: 0 },
 ];
 
 const service_spreadsheets = [
-    { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "출근", start: home, end: hjauto, time: 0 },
-    { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "퇴근", start: hjauto, end: home, time: 0 },
+    { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "출근", start: home, end: hdel, time: 0 },
+    { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "퇴근", start: hdel, end: home, time: 0 },
     { id: '1NYHVggzwYViUA7dE_i2sUKm5oZmMJrW-U1Drwb_ZNnc', name: "출근", start: home, end: falinux, time: 0 },
     { id: '1NYHVggzwYViUA7dE_i2sUKm5oZmMJrW-U1Drwb_ZNnc', name: "퇴근", start: falinux, end: home, time: 0 },
 ];
@@ -186,6 +187,16 @@ exports.handle_formula = function (event, context, callback) {
     });
 };
 
+exports.handle_location = function (event, context, callback) {
+    async.waterfall([
+        foundLocation,
+    ], function (err) {
+        if (err) {
+            console.log(err);
+        }
+    });
+};
+
 var authorize = function (args, callback) {
     // Check if we have previously stored a token.
     fs.readFile(TOKEN_PATH, (err, token) => {
@@ -303,6 +314,36 @@ var tracePath = function (sheet, callback) {
         }
 
         callback(err, sheet);
+    });
+};
+
+var foundLocation = function (callback) {
+    var option = {
+        uri: 'https://apis.openapi.sk.com/tmap/pois?version=1',
+        method: 'GET',
+        qs: {
+            searchKeyword: "씨즈타워",
+            reqCoordType: "WGS84GEO",
+            resCoordType: "WGS84GEO",
+        },
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Language': 'ko,en-US;q=0.8,en;q=0.6',
+            'appKey': config.get('tmap').appKey
+        },
+        jar: true,
+        json: true,
+        gzip: true,
+    };
+
+    request(option, function (err, res, body) {
+        if (!err && body) {
+            console.log(JSON.stringify(body, null, "  "));
+        }
+
+        callback(err);
     });
 };
 
