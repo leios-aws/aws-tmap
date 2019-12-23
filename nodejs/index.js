@@ -23,9 +23,10 @@ const develop_spreadsheets = [
 const service_spreadsheets = [
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "출근", start: home, end: hdel, time: 0 },
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "퇴근", start: hdel, end: home, time: 0 },
-    { id: '1NYHVggzwYViUA7dE_i2sUKm5oZmMJrW-U1Drwb_ZNnc', name: "출근", start: home, end: falinux, time: 0 },
-    { id: '1NYHVggzwYViUA7dE_i2sUKm5oZmMJrW-U1Drwb_ZNnc', name: "퇴근", start: falinux, end: home, time: 0 },
 ];
+
+const target_sheets = service_spreadsheets;
+const time_period = 5;
 
 let columns = [];
 for (var c = 'A'.charCodeAt(0); c <= 'Z'.charCodeAt(0); c++) {
@@ -42,17 +43,10 @@ var buildStatisticsFormula = function (sheet, index, callback) {
     sheet.statistics_range = util.format("%s요약!%s2:%s", sheet.name, columns[1], columns[7]);
     sheet.statistics_values = [];
 
-    for (var row = 2; row < 146; row++) {
+    for (var row = 2; row < (24 * 60 / time_period) + 2; row++) {
         let values = [];
         for (var col = 1; col < 8; col++) {
-            //var f = util.format("=Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1), (1 * 60)/(24*60*60))", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
             var f = `=Floor(TRIMMEAN(FILTER('${sheet.name}'!$${columns[row]}$2:$${columns[row]}, '${sheet.name}'!$B$2:$B = ${columns[col]}$1), 0.25), (1 * 60)/(24*60*60))`;
-            /*
-            var f = util.format("=Floor((SUMIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1)", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
-            f = f + util.format(" - MAXIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1)", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
-            f = f + util.format(" - MINIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, %s$1))", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
-            f = f + util.format(" / (COUNTIFS('%s'!$%s$2:$%s, \">=0\", '%s'!$B$2:$B, %s$1) - 2), (1 * 60)/(24*60*60))", sheet.name, columns[row], columns[row], sheet.name, columns[col]);
-            */
             values.push(f);
         }
         sheet.statistics_values.push(values);
@@ -95,7 +89,7 @@ var buildSummaryFormula = function (sheet, index, callback) {
         sheet.summary_values = [[`평균 ${sheet.name}`, `오늘 ${sheet.name}`]];
     }
 
-    for (var row = 2; row < 146; row++) {
+    for (var row = 2; row < (24 * 60 / time_period) + 2; row++) {
         var summary_row = [];
 
         if (sheet.name === "출근") {
@@ -146,7 +140,7 @@ exports.handle_formula = function (event, context, callback) {
                 oAuth2Client: new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]),
                 automated: false,
                 tokenReady: false,
-                sheets: service_spreadsheets
+                sheets: target_sheets
             });
         },
         authorize,
@@ -375,7 +369,7 @@ exports.handler = function (event, context, callback) {
                 oAuth2Client: new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]),
                 automated: true,
                 tokenReady: false,
-                sheets: service_spreadsheets
+                sheets: target_sheets
             });
         },
         authorize,
@@ -387,7 +381,7 @@ exports.handler = function (event, context, callback) {
                 sheet.service = service;
                 sheet.date_range = util.format('%s!A%d:B%d', sheet.name, row, row);
                 sheet.date_value = [[today.toFormat("yyyy-MM-dd"), weekdays[today.weekday - 1]]];
-                sheet.path_range = util.format('%s!%s%d', sheet.name, columns[Math.floor(today.hour * 6 + today.minute / 10) + 2], row);
+                sheet.path_range = util.format('%s!%s%d', sheet.name, columns[Math.floor(today.hour * 6 + today.minute / time_period) + 2], row);
                 sheet.path_value = 0;
 
                 async.waterfall([
