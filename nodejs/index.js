@@ -381,7 +381,7 @@ exports.handler = function (event, context, callback) {
                 sheet.service = service;
                 sheet.date_range = util.format('%s!A%d:B%d', sheet.name, row, row);
                 sheet.date_value = [[today.toFormat("yyyy-MM-dd"), weekdays[today.weekday - 1]]];
-                sheet.path_range = util.format('%s!%s%d', sheet.name, columns[Math.floor(today.hour * 6 + today.minute / time_period) + 2], row);
+                sheet.path_range = util.format('%s!%s%d', sheet.name, columns[Math.floor((today.hour * 60 + today.minute) / time_period) + 2], row);
                 sheet.path_value = 0;
 
                 async.waterfall([
