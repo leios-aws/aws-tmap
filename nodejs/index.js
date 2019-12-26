@@ -16,8 +16,8 @@ const home = { lon: "126.82806535", lat: "37.46551880" };
 const hdel = {lon: "127.09782029", lat: "37.40483622"};
 
 const develop_spreadsheets = [
-    { id: '1BqEggKt6LANeKvv7gqx3zsrrnkK_iC8a57t6q_nkxsI', name: "출근", start: home, end: hdel, time: 0 },
-    { id: '1BqEggKt6LANeKvv7gqx3zsrrnkK_iC8a57t6q_nkxsI', name: "퇴근", start: hdel, end: home, time: 0 },
+    { id: '1BOozLi2KsCemNhMETZaZVNPfQK3IgpDMVw9QQy0P5wI', name: "출근", start: home, end: hdel, time: 0 },
+    { id: '1BOozLi2KsCemNhMETZaZVNPfQK3IgpDMVw9QQy0P5wI', name: "퇴근", start: hdel, end: home, time: 0 },
 ];
 
 const service_spreadsheets = [
@@ -93,13 +93,13 @@ var buildSummaryFormula = function (sheet, index, callback) {
         var summary_row = [];
 
         if (sheet.name === "출근") {
-            summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\", '%s'!$A2:$A, \">\" & (TODAY() - 30)), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name, sheet.name, sheet.name));
+            summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B <> '토' and B <> '일' order by A desc limit 90\"), 0.25), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, "A", "KD", columns[row]));
             summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
             sheet.summary_values.push(summary_row);
         }
 
         if (sheet.name === "퇴근") {
-            summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$B$2:$B, \"<>토\", '%s'!$B$2:$B, \"<>일\", '%s'!$A2:$A, \">\" & (TODAY() - 30)), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name, sheet.name, sheet.name));
+            summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B <> '토' and B <> '일' order by A desc limit 90\"), 0.25), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, "A", "KD", columns[row]));
             summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
             sheet.summary_values.push(summary_row);
         }
@@ -343,22 +343,27 @@ var foundLocation = function (callback) {
 
 var updateTime = function (sheet, callback) {
     console.log(sheet.id, sheet.name, "시간 입력 요청");
-    sheet.service.spreadsheets.values.update({
-        spreadsheetId: sheet.id,
-        range: sheet.path_range,
-        valueInputOption: 'USER_ENTERED',
-        resource: { values: [[sheet.path_value / (24.0 * 60 * 60)]] }
-    }, (err, res) => {
-        if (!err) {
-            console.log(sheet.id, sheet.name, "시간 입력 완료", res.data.updatedRange, ":", res.statusText);
-        }
+    if (sheet.path_value > 0) {
+        sheet.service.spreadsheets.values.update({
+            spreadsheetId: sheet.id,
+            range: sheet.path_range,
+            valueInputOption: 'USER_ENTERED',
+            resource: { values: [[sheet.path_value / (24.0 * 60 * 60)]] }
+        }, (err, res) => {
+            if (!err) {
+                console.log(sheet.id, sheet.name, "시간 입력 완료", res.data.updatedRange, ":", res.statusText);
+            }
 
+            callback(err, sheet);
+        });
+    } else {
+        console.log(sheet.id, sheet.name, "시간 측정 실패");
         callback(err, sheet);
-    });
+    }
 };
 
 exports.handler = function (event, context, callback) {
-    var start_date = luxon.DateTime.fromISO("2019-06-30T15:00:00Z").setZone('Asia/Seoul');
+    var start_date = luxon.DateTime.fromISO("2019-12-23T15:00:00Z").setZone('Asia/Seoul');
     var today = luxon.DateTime.local().setZone('Asia/Seoul');
     var row = Math.floor((today - start_date) / 24 / 60 / 60 / 1000) + 2;
 
