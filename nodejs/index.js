@@ -375,18 +375,28 @@ var updateViewer = function (args, callback) {
     }, (err, res) => {
         if (!err) {
             console.log(res.data);
+            var read_values = res.data.values
 
-            service.spreadsheets.values.update({
+            service.spreadsheets.values.clear({
                 spreadsheetId: viewer_sheets.viewer,
                 range: '요약!A:G',
-                valueInputOption: 'USER_ENTERED',
-                resource: { values: res.data.values }
             }, (err, res) => {
                 if (!err) {
-                    console.log("보기 전용 입력 완료");
-                }
+                    service.spreadsheets.values.update({
+                        spreadsheetId: viewer_sheets.viewer,
+                        range: '요약!A:G',
+                        valueInputOption: 'RAW',
+                        resource: { values: read_values }
+                    }, (err, res) => {
+                        if (!err) {
+                            console.log("보기 전용 입력 완료");
+                        }
 
-                callback(err, args);
+                        callback(err, args);
+                    });
+                } else {
+                    callback(err, args);
+                }
             });
         } else {
             console.log(err);
@@ -445,7 +455,7 @@ exports.handler = function (event, context, callback) {
                 callback(err, args);
             });
         },
-        updateViewer,
+        //updateViewer,
     ], function (err, result) {
         if (err) {
             console.log(err);
