@@ -26,6 +26,8 @@ const service_spreadsheets = [
 ];
 
 const target_sheets = service_spreadsheets;
+const viewer_sheets = {data: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', viewer: '1aVBgwXfhn4lv13cvjJ52rz7GJV92iXojSJt35pxmZoQ'}
+
 const time_period = 5;
 
 let columns = [];
@@ -81,25 +83,27 @@ var updateStatisticsFormula = function (sheet, index, callback) {
 
 var buildSummaryFormula = function (sheet, index, callback) {
     if (sheet.name === "출근") {
-        sheet.summary_range = util.format("요약!%s1:%s", columns[1], columns[2]);
-        sheet.summary_values = [[`평균 ${sheet.name}`, `오늘 ${sheet.name}`]];
+        sheet.summary_range = util.format("요약!%s1:%s", columns[1], columns[3]);
+        sheet.summary_values = [[`평균 ${sheet.name}`, `요일 ${sheet.name}`, `오늘 ${sheet.name}`]];
     }
     if (sheet.name === "퇴근") {
-        sheet.summary_range = util.format("요약!%s1:%s", columns[3], columns[4]);
-        sheet.summary_values = [[`평균 ${sheet.name}`, `오늘 ${sheet.name}`]];
+        sheet.summary_range = util.format("요약!%s1:%s", columns[4], columns[6]);
+        sheet.summary_values = [[`평균 ${sheet.name}`, `요일 ${sheet.name}`, `오늘 ${sheet.name}`]];
     }
 
     for (var row = 2; row < (24 * 60 / time_period) + 2; row++) {
         var summary_row = [];
 
         if (sheet.name === "출근") {
-            summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B <> '토' and B <> '일' order by A desc limit 90\"), 0.25), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, "A", "KD", columns[row]));
+            summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B <> '토' and B <> '일' order by A desc limit 180\"), 0.25), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, "A", "KD", columns[row]));
+            summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B = '\"&TEXT(TODAY(), \"ddd\")&\"' order by A desc limit 180\"), 0.25), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, "A", "KD", columns[row]));
             summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
             sheet.summary_values.push(summary_row);
         }
 
         if (sheet.name === "퇴근") {
-            summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B <> '토' and B <> '일' order by A desc limit 90\"), 0.25), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, "A", "KD", columns[row]));
+            summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B <> '토' and B <> '일' order by A desc limit 180\"), 0.25), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, "A", "KD", columns[row]));
+            summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B = '\"&TEXT(TODAY(), \"ddd\")&\"' order by A desc limit 180\"), 0.25), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, "A", "KD", columns[row]));
             summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
             sheet.summary_values.push(summary_row);
         }
@@ -362,6 +366,35 @@ var updateTime = function (sheet, callback) {
     }
 };
 
+var updateViewer = function (args, callback) {
+    console.log(viewer_sheets.data, "보기 전용 입력");
+    const service = google.sheets({ version: 'v4', auth: args.oAuth2Client });
+    service.spreadsheets.values.get({
+        spreadsheetId: viewer_sheets.data,
+        range: '요약!A:G'
+    }, (err, res) => {
+        if (!err) {
+            console.log(res.data);
+
+            service.spreadsheets.values.update({
+                spreadsheetId: viewer_sheets.viewer,
+                range: '요약!A:G',
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: res.data.values }
+            }, (err, res) => {
+                if (!err) {
+                    console.log("보기 전용 입력 완료");
+                }
+
+                callback(err, args);
+            });
+        } else {
+            console.log(err);
+            callback(err, args);
+        }
+    });
+};
+
 exports.handler = function (event, context, callback) {
     var start_date = luxon.DateTime.fromISO("2019-12-23T15:00:00Z").setZone('Asia/Seoul');
     var today = luxon.DateTime.local().setZone('Asia/Seoul');
@@ -411,7 +444,8 @@ exports.handler = function (event, context, callback) {
                 }
                 callback(err, args);
             });
-        }
+        },
+        updateViewer,
     ], function (err, result) {
         if (err) {
             console.log(err);
