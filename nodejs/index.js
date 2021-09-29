@@ -33,8 +33,8 @@ const develop_spreadsheets = [
 const service_spreadsheets = [
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "출근", start: home, end: hdel, time: 0, since: "2019-12-23T15:00:00Z" },
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "퇴근", start: hdel, end: home, time: 0, since: "2019-12-23T15:00:00Z" },
-    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "출근", start: home, end: new_hdel, time: 0, since: "2021-09-29T15:00:00Z" },
-    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "퇴근", start: new_hdel, end: home, time: 0, since: "2021-09-29T15:00:00Z" },
+    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "출근", start: home, end: new_hdel, time: 0, since: "2021-09-28T15:00:00Z" },
+    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "퇴근", start: new_hdel, end: home, time: 0, since: "2021-09-28T15:00:00Z" },
 ];
 
 const target_sheets = service_spreadsheets;
