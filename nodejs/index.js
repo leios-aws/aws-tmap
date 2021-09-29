@@ -31,10 +31,10 @@ const develop_spreadsheets = [
 ];
 
 const service_spreadsheets = [
-    { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "출근", start: home, end: hdel, time: 0 },
-    { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "퇴근", start: hdel, end: home, time: 0 },
-    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "출근", start: home, end: new_hdel, time: 0 },
-    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "퇴근", start: new_hdel, end: home, time: 0 },
+    { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "출근", start: home, end: hdel, time: 0, since: "2019-12-23T15:00:00Z" },
+    { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "퇴근", start: hdel, end: home, time: 0, since: "2019-12-23T15:00:00Z" },
+    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "출근", start: home, end: new_hdel, time: 0, since: "2021-09-29T15:00:00Z" },
+    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "퇴근", start: new_hdel, end: home, time: 0, since: "2021-09-29T15:00:00Z" },
 ];
 
 const target_sheets = service_spreadsheets;
@@ -418,10 +418,6 @@ var updateViewer = function (args, callback) {
 };
 
 exports.handler = function (event, context, callback) {
-    var start_date = luxon.DateTime.fromISO("2019-12-23T15:00:00Z").setZone('Asia/Seoul');
-    var today = luxon.DateTime.local().setZone('Asia/Seoul');
-    var row = Math.floor((today - start_date) / 24 / 60 / 60 / 1000) + 2;
-
     async.waterfall([
         function (callback) {
             const { client_secret, client_id, redirect_uris } = config.get('installed');
@@ -438,6 +434,10 @@ exports.handler = function (event, context, callback) {
             const service = google.sheets({ version: 'v4', auth: args.oAuth2Client });
 
             async.each(args.sheets, function (sheet, callback) {
+                var start_date = luxon.DateTime.fromISO(sheet.since).setZone('Asia/Seoul');
+                var today = luxon.DateTime.local().setZone('Asia/Seoul');
+                var row = Math.floor((today - start_date) / 24 / 60 / 60 / 1000) + 2;
+
                 sheet.service = service;
                 sheet.date_range = util.format('%s!A%d:B%d', sheet.name, row, row);
                 sheet.date_value = [[today.toFormat("yyyy-MM-dd"), weekdays[today.weekday - 1]]];
