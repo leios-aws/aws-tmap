@@ -6,6 +6,15 @@ const readline = require('readline');
 const luxon = require('luxon');
 const util = require('util');
 const async = require('async');
+const AWS = require('aws-sdk');
+
+AWS.config.update({
+    region: 'ap-northeast-2',
+    endpoint: "http://dynamodb.ap-northeast-2.amazonaws.com"
+});
+
+//const dynamodb = new AWS.DynamoDB();
+const docClient = new AWS.DynamoDB.DocumentClient();
 
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 const TOKEN_PATH = 'config/token.json';
@@ -14,6 +23,7 @@ const falinux = { lon: "126.99024683", lat: "37.40150134" };
 const hjauto = { lon: "126.88114364", lat: "37.47296332" };
 const home = { lon: "126.82806535", lat: "37.46551880" };
 const hdel = {lon: "127.09782029", lat: "37.40483622"};
+const new_hdel = {lat: "37.219393", lon: "127.108169"};
 
 const develop_spreadsheets = [
     { id: '1BOozLi2KsCemNhMETZaZVNPfQK3IgpDMVw9QQy0P5wI', name: "출근", start: home, end: hdel, time: 0 },
@@ -23,6 +33,8 @@ const develop_spreadsheets = [
 const service_spreadsheets = [
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "출근", start: home, end: hdel, time: 0 },
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "퇴근", start: hdel, end: home, time: 0 },
+    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "출근", start: home, end: new_hdel, time: 0 },
+    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "퇴근", start: new_hdel, end: home, time: 0 },
 ];
 
 const target_sheets = service_spreadsheets;
