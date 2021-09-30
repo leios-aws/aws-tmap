@@ -60,7 +60,7 @@ var buildStatisticsFormula = function (sheet, index, callback) {
     for (var row = 2; row < (24 * 60 / time_period) + 2; row++) {
         let values = [];
         for (var col = 1; col < 8; col++) {
-            var f = `=Floor(TRIMMEAN(FILTER('${sheet.name}'!$${columns[row]}$2:$${columns[row]}, '${sheet.name}'!$B$2:$B = ${columns[col]}$1), 0.25), (1 * 60)/(24*60*60))`;
+            var f = `=IFERROR(Floor(TRIMMEAN(FILTER('${sheet.name}'!$${columns[row]}$2:$${columns[row]}, '${sheet.name}'!$B$2:$B = ${columns[col]}$1), 0.25), (1 * 60)/(24*60*60)), \"\")`;
             values.push(f);
         }
         sheet.statistics_values.push(values);
@@ -107,16 +107,16 @@ var buildSummaryFormula = function (sheet, index, callback) {
         var summary_row = [];
 
         if (sheet.name === "출근") {
-            summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B <> '토' and B <> '일' order by A desc limit 180\"), 0.25), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, "A", "KD", columns[row]));
-            summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B = '\"&TEXT(TODAY(), \"ddd\")&\"' order by A desc limit 180\"), 0.25), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, "A", "KD", columns[row]));
-            summary_row.push(util.format("=IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
+            summary_row.push(util.format("=IFERROR(IF(MOD($A%d*24, 24) < 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B <> '토' and B <> '일' order by A desc limit 180\"), 0.25), (1 * 60)/(24*60*60)), \"\"), \"\")", row, sheet.name, "A", "KD", columns[row]));
+            summary_row.push(util.format("=IFERROR(IF(MOD($A%d*24, 24) < 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B = '\"&TEXT(TODAY(), \"ddd\")&\"' order by A desc limit 180\"), 0.25), (1 * 60)/(24*60*60)), \"\"), \"\")", row, sheet.name, "A", "KD", columns[row]));
+            summary_row.push(util.format("=IFERROR(IF(MOD($A%d*24, 24) < 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\"), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
             sheet.summary_values.push(summary_row);
         }
 
         if (sheet.name === "퇴근") {
-            summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B <> '토' and B <> '일' order by A desc limit 180\"), 0.25), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, "A", "KD", columns[row]));
-            summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B = '\"&TEXT(TODAY(), \"ddd\")&\"' order by A desc limit 180\"), 0.25), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, "A", "KD", columns[row]));
-            summary_row.push(util.format("=IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
+            summary_row.push(util.format("=IFERROR(IF(MOD($A%d*24, 24) >= 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B <> '토' and B <> '일' order by A desc limit 180\"), 0.25), (1 * 60)/(24*60*60)), \"\"), \"\")", row, sheet.name, "A", "KD", columns[row]));
+            summary_row.push(util.format("=IFERROR(IF(MOD($A%d*24, 24) >= 12, Floor(TRIMMEAN(query('%s'!$%s$2:$%s, \"select \`%s\` where B = '\"&TEXT(TODAY(), \"ddd\")&\"' order by A desc limit 180\"), 0.25), (1 * 60)/(24*60*60)), \"\"), \"\")", row, sheet.name, "A", "KD", columns[row]));
+            summary_row.push(util.format("=IFERROR(IF(MOD($A%d*24, 24) >= 12, Floor(AVERAGEIFS('%s'!$%s$2:$%s, '%s'!$A$2:$A, TODAY()), (1 * 60)/(24*60*60)), \"\"), \"\")", row, sheet.name, columns[row], columns[row], sheet.name));
             sheet.summary_values.push(summary_row);
         }
     }
