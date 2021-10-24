@@ -24,6 +24,7 @@ const hjauto = { lon: "126.88114364", lat: "37.47296332" };
 const home = { lon: "126.82806535", lat: "37.46551880" };
 const hdel = {lon: "127.09782029", lat: "37.40483622"};
 const new_hdel = {lat: "37.219393", lon: "127.108169"};
+const naverlabs = {lat: "37.337879", lon: "127.109973"};
 
 const develop_spreadsheets = [
     { id: '1BOozLi2KsCemNhMETZaZVNPfQK3IgpDMVw9QQy0P5wI', name: "출근", start: home, end: hdel, time: 0 },
@@ -33,8 +34,8 @@ const develop_spreadsheets = [
 const service_spreadsheets = [
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "출근", start: home, end: hdel, time: 0, since: "2019-12-23T15:00:00Z", appKey: config.get('tmap').appKeyHDEL },
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "퇴근", start: hdel, end: home, time: 0, since: "2019-12-23T15:00:00Z", appKey: config.get('tmap').appKeyHDEL },
-    //{ id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "출근", start: home, end: new_hdel, time: 0, since: "2021-09-28T15:00:00Z" },
-    //{ id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "퇴근", start: new_hdel, end: home, time: 0, since: "2021-09-28T15:00:00Z" },
+    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "출근", start: home, end: naverlabs, time: 0, since: "2021-10-23T15:00:00Z", appKey: config.get('tmap').appKeyNaver },
+    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "퇴근", start: naverlabs, end: home, time: 0, since: "2021-10-23T15:00:00Z", appKey: config.get('tmap').appKeyNaver },
 ];
 
 const target_sheets = service_spreadsheets;
@@ -332,7 +333,7 @@ var foundLocation = function (callback) {
         uri: 'https://apis.openapi.sk.com/tmap/pois?version=1',
         method: 'GET',
         qs: {
-            searchKeyword: "씨즈타워",
+            searchKeyword: "네이버랩스",
             reqCoordType: "WGS84GEO",
             resCoordType: "WGS84GEO",
         },
