@@ -7,14 +7,7 @@ const luxon = require('luxon');
 const util = require('util');
 const async = require('async');
 const AWS = require('aws-sdk');
-
-AWS.config.update({
-    region: 'ap-northeast-2',
-    endpoint: "http://dynamodb.ap-northeast-2.amazonaws.com"
-});
-
-//const dynamodb = new AWS.DynamoDB();
-const docClient = new AWS.DynamoDB.DocumentClient();
+const { sheets } = require('googleapis/build/src/apis/sheets');
 
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 const TOKEN_PATH = 'config/token.json';
@@ -26,6 +19,12 @@ const hdel = {lon: "127.09782029", lat: "37.40483622"};
 const new_hdel = {lat: "37.219393", lon: "127.108169"};
 const naverlabs = {lat: "37.337879", lon: "127.109973"};
 
+AWS.config.update({
+    region: 'ap-northeast-2',
+    endpoint: "http://dynamodb.ap-northeast-2.amazonaws.com"
+});
+const docClient = new AWS.DynamoDB.DocumentClient();
+
 const develop_spreadsheets = [
     { id: '1BOozLi2KsCemNhMETZaZVNPfQK3IgpDMVw9QQy0P5wI', name: "출근", start: home, end: hdel, time: 0 },
     { id: '1BOozLi2KsCemNhMETZaZVNPfQK3IgpDMVw9QQy0P5wI', name: "퇴근", start: hdel, end: home, time: 0 },
@@ -34,8 +33,6 @@ const develop_spreadsheets = [
 const service_spreadsheets = [
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "출근", start: home, end: hdel, time: 0, since: "2019-12-23T15:00:00Z", appKey: config.get('tmap').appKeyHDEL },
     { id: '1_HcGNs1XylAaEKu1NwIRGaPJn0wS42-v6OiVguhUO9M', name: "퇴근", start: hdel, end: home, time: 0, since: "2019-12-23T15:00:00Z", appKey: config.get('tmap').appKeyHDEL },
-    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "출근", start: home, end: naverlabs, time: 0, since: "2021-10-23T15:00:00Z", appKey: config.get('tmap').appKeyNaver },
-    { id: '1SZEdwnD5VaYgGm1KFsbY_FBvOGocOBh2r7XxBN0-hBw', name: "퇴근", start: naverlabs, end: home, time: 0, since: "2021-10-23T15:00:00Z", appKey: config.get('tmap').appKeyNaver },
 ];
 
 const target_sheets = service_spreadsheets;
@@ -358,8 +355,8 @@ var foundLocation = function (callback) {
     });
 };
 
-var updateTime = function (sheet, callback) {
-    console.log(sheet.id, sheet.name, "시간 입력 요청");
+var updateTimeGoogleDoc = function (sheet, callback) {
+    console.log(sheet.id, sheet.name, "시간 입력 요청 for Google Doc");
     if (sheet.path_value > 0) {
         sheet.service.spreadsheets.values.update({
             spreadsheetId: sheet.id,
@@ -377,6 +374,62 @@ var updateTime = function (sheet, callback) {
         console.log(sheet.id, sheet.name, "시간 측정 실패");
         callback(err, sheet);
     }
+};
+
+var updateTimeDynamoDB = function (args, callback) {
+    var today = luxon.DateTime.local().setZone('Asia/Seoul');
+    var timestamp_now = Math.floor(today.set({second: 0, millisecond: 0}) / 1000)
+    var timestamp_key = Math.floor(today.set({hour: 0, minute: 0, second: 0, millisecond: 0}) / 1000)
+    console.log("시간 입력 요청 for DynamoDB", timestamp_now);
+    var getParams = {
+        TableName: 'webdata',
+        Key: {
+            site: 'tmap_hdel',
+            timestamp: timestamp_key,
+        }
+    };
+
+    console.log(`Get Statistics for tmap_hdel ${today.toFormat('yyyy-MM-dd')}`);
+    docClient.get(getParams, (err, getResult) => {
+        if (!err) {
+            if (!getResult) {
+                getResult = {}
+            }
+            if (!getResult.Item) {
+                getResult.Item = {}
+            }
+            if (!getResult.Item.data) {
+                getResult.Item.data = {}
+            }
+            getResult.Item.data[timestamp_now] = {}
+
+            for (var i = 0; i < args.sheets.length; i++) {
+                getResult.Item.data[timestamp_now][args.sheets[i].name] = args.sheets[i].path_value;
+            }
+            var putParams = {
+                TableName: 'webdata',
+                Item: {
+                    site: 'tmap_hdel',
+                    timestamp: timestamp_key,
+                    ttl: timestamp_key + 30 * 24 * 60 * 60,
+                    data: getResult.Item.data
+                }
+            };
+
+            console.log("Updating Statistics");
+            docClient.put(putParams, (err, putResult) => {
+                if (!err) {
+                    console.log(err);
+                }
+                console.log("Statistics updated");
+                if (callback) {
+                    callback(null, args);
+                }
+            });
+        } else {
+            callback(err, args);
+        }
+    });
 };
 
 var updateViewer = function (args, callback) {
@@ -454,7 +507,7 @@ exports.handler = function (event, context, callback) {
                     tracePath,
                     tracePath,
                     tracePath,
-                    updateTime,
+                    updateTimeGoogleDoc,
                 ], function (err) {
                     if (err) {
                         console.log(err);
@@ -464,8 +517,10 @@ exports.handler = function (event, context, callback) {
             }, function (err) {
                 if (err) {
                     console.log(err);
+                    callback(err, args);
+                } else {
+                    updateTimeDynamoDB(args, callback);
                 }
-                callback(err, args);
             });
         },
         //updateViewer,
