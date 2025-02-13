@@ -19,8 +19,10 @@ const docClient = new AWS.DynamoDB.DocumentClient();
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 const TOKEN_PATH = 'config/token.json';
 
-const home = { lon: "126.82806535", lat: "37.46551880" };
-const company1 = {lon: "127.090294", lat: "37.391982"};
+const home = { lon: "126.82730340000013", lat: "37.46516779999984"};
+const company1 = { lon: "127.09039300000012", lat: "37.39217170000034"};
+//const home = { lon: "126.82806535", lat: "37.46551880" };
+//const company1 = {lon: "127.090294", lat: "37.391982"};
 
 const develop_spreadsheets = [
     { id: '1BOozLi2KsCemNhMETZaZVNPfQK3IgpDMVw9QQy0P5wI', name: "출근", start: home, end: company1, time: 0 },

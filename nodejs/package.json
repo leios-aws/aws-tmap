@@ -1,6 +1,6 @@
 {
   "name": "aws-tmap",
-  "version": "16.0.17",
+  "version": "16.0.18",
   "description": "",
   "main": "index.js",
   "scripts": {
