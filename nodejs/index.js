@@ -19,8 +19,14 @@ const docClient = new AWS.DynamoDB.DocumentClient();
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 const TOKEN_PATH = 'config/token.json';
 
+// FALINUX
+// longitude\":126.9902529,\"latitude\":37.4016111,
+//           "frontLat": "37.40136248",
+//         "frontLon": "126.99046904",
 const home = { lon: "126.82730340000013", lat: "37.46516779999984"};
-const company1 = { lon: "127.09039300000012", lat: "37.39217170000034"};
+const company1 = { lon: "126.99046904", lat: "37.40136248"};
+
+// 운중로 227: const company1 = { lon: "127.09039300000012", lat: "37.39217170000034"};
 //const home = { lon: "126.82806535", lat: "37.46551880" };
 //const company1 = {lon: "127.090294", lat: "37.391982"};
 
